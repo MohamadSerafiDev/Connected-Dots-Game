@@ -233,6 +233,51 @@ class GameState {
 
     return moves;
   }
+
+  int _calculateManhattanDistance(ColorPair pair) {
+    return (pair.start.x - pair.end.x).abs() +
+        (pair.start.y - pair.end.y).abs();
+  }
+
+  List<ColorPair> _sortColorPairsByDistance() {
+    final sortedPairs = List<ColorPair>.from(colorPairs);
+    sortedPairs.sort(
+      (a, b) => _calculateManhattanDistance(a) - _calculateManhattanDistance(b),
+    );
+    return sortedPairs;
+  }
+
+  Future<GameState?> solveWithDFS() async {
+    final sortedPairs = _sortColorPairsByDistance();
+    final visitedStates = <String>{};
+    final stack = <GameState>[this];
+    visitedStates.add(getHashOfState());
+
+    while (stack.isNotEmpty) {
+      final currentState = stack.removeLast();
+      final hash = currentState.getHashOfState();
+      log(stack.length.toString(), name: 'DFS State');
+
+      if (currentState.isFinalState()) {
+        return currentState;
+      }
+
+      for (final pair in sortedPairs) {
+        final possibleMoves = currentState.getPossibleMoves(pair.color);
+        for (final move in possibleMoves) {
+          final newState = currentState.copyState();
+          newState.makePossibleMoves(move.x, move.y, pair.color);
+          final newHash = newState.getHashOfState();
+          log(visitedStates.contains(newHash).toString(), name: 'visited');
+          if (!visitedStates.contains(newHash)) {
+            visitedStates.add(newHash);
+            stack.add(newState);
+          }
+        }
+      }
+    }
+    return null;
+  }
 }
 
 

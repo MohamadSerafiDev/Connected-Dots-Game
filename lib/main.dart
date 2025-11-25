@@ -57,12 +57,12 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
   }
 
   void initializeGame() {
-    const size = 6;
+    const size = 5;
     final colorPairs = [
       ColorPair(color: 'A', start: Position(0, 0), end: Position(0, 4)),
-      ColorPair(color: 'B', start: Position(1, 0), end: Position(5, 5)),
+      ColorPair(color: 'B', start: Position(1, 0), end: Position(4, 0)),
       ColorPair(color: 'C', start: Position(2, 1), end: Position(2, 4)),
-      ColorPair(color: 'D', start: Position(2, 0), end: Position(5, 2)),
+      // ColorPair(color: 'D', start: Position(2, 0), end: Position(5, 2)),
     ];
 
     setState(() {
@@ -197,6 +197,25 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
       message = 'Cleared path for color $selectedColor';
     });
     gameState.printBoard();
+  }
+
+  Future<void> handleSolve() async {
+    setState(() {
+      message = 'Solving...';
+    });
+    final solution = await gameState.solveWithDFS();
+    if (solution != null) {
+      setState(() {
+        log('solved!!');
+        gameState = solution;
+        isComplete = true;
+        message = 'Solved!';
+      });
+    } else {
+      setState(() {
+        message = 'No solution found.';
+      });
+    }
   }
 
   Color getColorForCell(String color) {
@@ -488,6 +507,28 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3B82F6),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            log('start solving');
+                            handleSolve();
+                          },
+                          icon: const Icon(Icons.auto_awesome, size: 20),
+                          label: const Text(
+                            'Solve with DFS',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10B981),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24,
