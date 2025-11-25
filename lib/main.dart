@@ -373,8 +373,9 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                           final y = index ~/ gameState.size;
                           final cell = gameState.board[y][x];
 
-                          final isPossibleMove = gameState.possibleMoves
-                              .any((p) => p.x == x && p.y == y);
+                          final isPossibleMove = gameState.possibleMoves.any(
+                            (p) => p.x == x && p.y == y,
+                          );
 
                           return Material(
                             color: cell == null
@@ -391,25 +392,24 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                                   borderRadius: BorderRadius.circular(4),
                                   border: isPossibleMove
                                       ? Border.all(
-                                          color:
-                                              getColorForCell(selectedColor!),
-                                          width: 3,
+                                          color: getColorForCell(
+                                            selectedColor!,
+                                          ),
+                                          width: 6,
                                         )
                                       : cell != null &&
-                                              (cell.type == CellType.start ||
-                                                  cell.type == CellType.end)
-                                          ? Border.all(
-                                              color:
-                                                  getColorForCell(cell.color),
-                                              width: 3,
-                                            )
-                                          : cell != null
-                                              ? Border.all(
-                                                  color: getColorForCell(
-                                                      cell.color),
-                                                  width: 2,
-                                                )
-                                              : null,
+                                            (cell.type == CellType.start ||
+                                                cell.type == CellType.end)
+                                      ? Border.all(
+                                          color: getColorForCell(cell.color),
+                                          width: 3,
+                                        )
+                                      : cell != null
+                                      ? Border.all(
+                                          color: getColorForCell(cell.color),
+                                          width: 2,
+                                        )
+                                      : null,
                                 ),
                                 child: Center(
                                   child:

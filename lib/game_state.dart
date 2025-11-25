@@ -54,11 +54,40 @@ class GameState {
   }
 
   String getHashOfState() {
-    return board
+    final rawHash = board
         .map(
-          (row) => row.map((cell) => cell == null ? '0' : cell.color).join(','),
+          (row) => row.map((cell) => cell == null ? '0' : cell.color).join(''),
         )
-        .join(',');
+        .join('');
+
+    if (rawHash.isEmpty) {
+      return '';
+    }
+
+    final StringBuffer compressedHash = StringBuffer();
+    int count = 1;
+    String? currentChar = rawHash[0];
+
+    for (int i = 1; i < rawHash.length; i++) {
+      if (rawHash[i] == currentChar) {
+        count++;
+      } else {
+        if (count > 1) {
+          compressedHash.write(count);
+        }
+        compressedHash.write(currentChar);
+        currentChar = rawHash[i];
+        count = 1;
+      }
+    }
+
+    // Append the last character(s)
+    if (count > 1) {
+      compressedHash.write(count);
+    }
+    compressedHash.write(currentChar);
+
+    return compressedHash.toString();
   }
 
   GameState copyState() {
