@@ -1,5 +1,4 @@
-import 'dart:developer';
-import 'dart:io';
+import 'dart:developer' as dev;
 
 import 'package:dot_connec_project/cell.dart';
 import 'package:dot_connec_project/color_pair.dart';
@@ -157,8 +156,8 @@ class GameState {
     final path = paths[color];
 
     if (path == null || path.length <= 1) return false;
-    log(path.first.x.toString(), name: 'last x');
-    log(path.first.y.toString(), name: 'last y');
+    dev.log(path.first.x.toString(), name: 'last x');
+    dev.log(path.first.y.toString(), name: 'last y');
     final lastPos = path.removeLast();
     final cell = board[lastPos.y][lastPos.x];
 
@@ -187,7 +186,7 @@ class GameState {
   }
 
   void printBoard() {
-    log('\n=== Number Link Board ===');
+    dev.log('\n=== Number Link Board ===');
     for (int y = 0; y < size; y++) {
       String row = '';
       for (int x = 0; x < size; x++) {
@@ -198,9 +197,9 @@ class GameState {
           row += '${cell.color} ';
         }
       }
-      log(row, name: 'board');
+      dev.log(row, name: 'board');
     }
-    log('========================\n');
+    dev.log('========================\n');
   }
 
   List<Position> getPossibleMoves(String color) {
@@ -234,52 +233,72 @@ class GameState {
     return moves;
   }
 
-  int _calculateManhattanDistance(ColorPair pair) {
-    return (pair.start.x - pair.end.x).abs() +
-        (pair.start.y - pair.end.y).abs();
-  }
-
-  List<ColorPair> _sortColorPairsByDistance() {
-    final sortedPairs = List<ColorPair>.from(colorPairs);
-    sortedPairs.sort(
-      (a, b) => _calculateManhattanDistance(a) - _calculateManhattanDistance(b),
-    );
-    return sortedPairs;
-  }
-
-  Future<GameState?> solveWithDFS() async {
-    final sortedPairs = _sortColorPairsByDistance();
+  Stream<GameState> solveWithDFS() async* {
+    final randomPairs = List<ColorPair>.from(colorPairs)..shuffle();
     final visitedStates = <String>{};
-    final stack = <GameState>[this];
-    visitedStates.add(getHashOfState());
+
+    // The state in the stack is a tuple: (GameState, indexOfPairToSolve)
+    final stack = <(GameState, int)>[(this, 0)];
+    visitedStates.add(getHashOfState() + '_0');
 
     while (stack.isNotEmpty) {
-      final currentState = stack.removeLast();
-      final hash = currentState.getHashOfState();
-      log(stack.length.toString(), name: 'DFS State');
+      final (currentState, pairIndex) = stack.removeLast();
+      dev.log('pairIndex: $pairIndex', name: 'pairIndex');
+      dev.log(
+        'currentState: ${currentState.getHashOfState()}',
+        name: 'currentState',
+      );
+      yield currentState;
 
-      if (currentState.isFinalState()) {
-        return currentState;
+      if (pairIndex == randomPairs.length) {
+        if (currentState.isFinalState()) {
+          yield currentState; // Final solution
+          return;
+        }
+        continue;
       }
 
-      for (final pair in sortedPairs) {
-        final possibleMoves = currentState.getPossibleMoves(pair.color);
-        for (final move in possibleMoves) {
-          final newState = currentState.copyState();
-          newState.makePossibleMoves(move.x, move.y, pair.color);
-          final newHash = newState.getHashOfState();
-          log(visitedStates.contains(newHash).toString(), name: 'visited');
-          if (!visitedStates.contains(newHash)) {
-            visitedStates.add(newHash);
-            stack.add(newState);
-          }
+      final pair = randomPairs[pairIndex];
+      final color = pair.color;
+      final path = currentState.paths[color]!;
+      final lastPos = path.last;
+
+      if (lastPos.x == pair.end.x && lastPos.y == pair.end.y) {
+        // This color is already connected. Move to the next one.
+        final nextStateTuple = (currentState, pairIndex + 1);
+        final hash = currentState.getHashOfState() + '_${pairIndex + 1}';
+        if (!visitedStates.contains(hash)) {
+          visitedStates.add(hash);
+          stack.add(nextStateTuple);
+        }
+        continue;
+      }
+
+      // This color is not connected yet. Find possible moves.
+      final possibleMoves = currentState.getPossibleMoves(color);
+
+      for (final move in possibleMoves) {
+        final newState = currentState.copyState();
+        newState.makePossibleMoves(move.x, move.y, color);
+
+        final newPath = newState.paths[color]!;
+        final newLastPos = newPath.last;
+
+        int nextPairIndex = pairIndex;
+        if (newLastPos.x == pair.end.x && newLastPos.y == pair.end.y) {
+          // Path for this color is complete, move to the next color.
+          nextPairIndex = pairIndex + 1;
+        }
+
+        final hash = newState.getHashOfState() + '_$nextPairIndex';
+        if (!visitedStates.contains(hash)) {
+          visitedStates.add(hash);
+          stack.add((newState, nextPairIndex));
         }
       }
     }
-    return null;
   }
 }
-
 
 // String getHashOfState() {
 //     String hash = '';

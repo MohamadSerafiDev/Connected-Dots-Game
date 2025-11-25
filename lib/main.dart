@@ -5,7 +5,6 @@ import 'package:dot_connec_project/color_pair.dart';
 import 'package:dot_connec_project/game_state.dart';
 import 'package:dot_connec_project/position.dart';
 import 'package:dot_connec_project/winning_states_screen.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -60,9 +59,9 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     const size = 5;
     final colorPairs = [
       ColorPair(color: 'A', start: Position(0, 0), end: Position(0, 4)),
-      ColorPair(color: 'B', start: Position(1, 0), end: Position(4, 0)),
+      ColorPair(color: 'B', start: Position(2, 2), end: Position(4, 4)),
       ColorPair(color: 'C', start: Position(2, 1), end: Position(2, 4)),
-      // ColorPair(color: 'D', start: Position(2, 0), end: Position(5, 2)),
+      ColorPair(color: 'D', start: Position(2, 0), end: Position(4, 2)),
     ];
 
     setState(() {
@@ -203,8 +202,8 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     setState(() {
       message = 'Solving...';
     });
-    final solution = await gameState.solveWithDFS();
-    if (solution != null) {
+    final solution = await gameState.solveWithDFS().last;
+    if (solution.isFinalState()) {
       setState(() {
         log('solved!!');
         gameState = solution;
@@ -218,6 +217,21 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     }
   }
 
+  Future<void> visualizeDFS() async {
+    setState(() {
+      message = 'Visualizing DFS...';
+    });
+    await for (final state in gameState.solveWithDFS()) {
+      setState(() {
+        gameState = state;
+      });
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    setState(() {
+      message = 'Visualization complete.';
+    });
+  }
+
   Color getColorForCell(String color) {
     final colorIndex = color.codeUnitAt(0) - 65;
     return colors[colorIndex % colors.length];
@@ -226,323 +240,349 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFE9D5FF), Color(0xFFDBEAFE)],
+      body: SingleChildScrollView(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFFE9D5FF), Color(0xFFDBEAFE)],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              physics: NeverScrollableScrollPhysics(),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 600),
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Number Link Puzzle',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: NeverScrollableScrollPhysics(),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Connect matching colors without crossing paths',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // status Message
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isComplete
-                            ? const Color(0xFFD1FAE5)
-                            : const Color(0xFFDBEAFE),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        message,
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Number Link Puzzle',
                         style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: isComplete
-                              ? const Color(0xFF065F46)
-                              : const Color(0xFF1E40AF),
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Connect matching colors without crossing paths',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B7280),
                         ),
                         textAlign: TextAlign.center,
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Color Selection
-                    const Text(
-                      'Select Color:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.spaceEvenly,
-                      runSpacing: 8,
-                      children: gameState.colorPairs.map((pair) {
-                        final isSelected = selectedColor == pair.color;
-                        final path = gameState.paths[pair.color];
-                        final isConnected =
-                            path!.length > 1 &&
-                            path.last.x == pair.end.x &&
-                            path.last.y == pair.end.y;
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Material(
-                            color: getColorForCell(pair.color),
-                            borderRadius: BorderRadius.circular(8),
-                            child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  selectedColor = pair.color;
-                                  gameState.updatePossibleMoves(pair.color);
-                                  message =
-                                      'Drawing path for color ${pair.color}';
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: const Color(0xFF1F2937),
-                                          width: 4,
-                                        )
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        pair.color,
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      if (isConnected)
-                                        const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Game Board
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1F2937),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: gameState.size,
-                          crossAxisSpacing: 4,
-                          mainAxisSpacing: 4,
+                      // status Message
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isComplete
+                              ? const Color(0xFFD1FAE5)
+                              : const Color(0xFFDBEAFE),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        itemCount: gameState.size * gameState.size,
-                        itemBuilder: (context, index) {
-                          final x = index % gameState.size;
-                          final y = index ~/ gameState.size;
-                          final cell = gameState.board[y][x];
+                        child: Text(
+                          message,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isComplete
+                                ? const Color(0xFF065F46)
+                                : const Color(0xFF1E40AF),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
-                          final isPossibleMove = gameState.possibleMoves.any(
-                            (p) => p.x == x && p.y == y,
-                          );
+                      // Color Selection
+                      const Text(
+                        'Select Color:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF374151),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        alignment: WrapAlignment.spaceEvenly,
+                        runSpacing: 8,
+                        children: gameState.colorPairs.map((pair) {
+                          final isSelected = selectedColor == pair.color;
+                          final path = gameState.paths[pair.color];
+                          final isConnected =
+                              path!.length > 1 &&
+                              path.last.x == pair.end.x &&
+                              path.last.y == pair.end.y;
 
-                          return Material(
-                            color: cell == null
-                                ? Colors.white
-                                : getColorForCell(cell.color).withOpacity(
-                                    cell.type == CellType.path ? 0.6 : 1.0,
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Material(
+                              color: getColorForCell(pair.color),
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    selectedColor = pair.color;
+                                    gameState.updatePossibleMoves(pair.color);
+                                    message =
+                                        'Drawing path for color ${pair.color}';
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: const Color(0xFF1F2937),
+                                            width: 4,
+                                          )
+                                        : null,
                                   ),
-                            borderRadius: BorderRadius.circular(4),
-                            child: InkWell(
-                              onTap: () => handleCellClick(x, y),
-                              borderRadius: BorderRadius.circular(4),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: isPossibleMove
-                                      ? Border.all(
-                                          color: getColorForCell(
-                                            selectedColor!,
-                                          ),
-                                          width: 6,
-                                        )
-                                      : cell != null &&
-                                            (cell.type == CellType.start ||
-                                                cell.type == CellType.end)
-                                      ? Border.all(
-                                          color: getColorForCell(cell.color),
-                                          width: 3,
-                                        )
-                                      : cell != null
-                                      ? Border.all(
-                                          color: getColorForCell(cell.color),
-                                          width: 2,
-                                        )
-                                      : null,
-                                ),
-                                child: Center(
-                                  child:
-                                      cell != null &&
-                                          (cell.type == CellType.start ||
-                                              cell.type == CellType.end)
-                                      ? Text(
-                                          cell.color,
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          pair.color,
                                           style: const TextStyle(
-                                            fontSize: 18,
+                                            fontSize: 24,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
                                           ),
-                                        )
-                                      : null,
+                                        ),
+                                        if (isConnected)
+                                          const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Controls
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: handleUndo,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFBBF24),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Undo Last',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
+                      // Game Board
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1F2937),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        ElevatedButton.icon(
-                          onPressed: selectedColor != null
-                              ? handleClearPath
-                              : null,
-                          icon: const Icon(Icons.close, size: 20),
-                          label: const Text(
-                            'Clear Path',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEF4444),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: initializeGame,
-                          icon: const Icon(Icons.refresh, size: 20),
-                          label: const Text(
-                            'New Game',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF3B82F6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            log('start solving');
-                            handleSolve();
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: gameState.size,
+                                crossAxisSpacing: 4,
+                                mainAxisSpacing: 4,
+                              ),
+                          itemCount: gameState.size * gameState.size,
+                          itemBuilder: (context, index) {
+                            final x = index % gameState.size;
+                            final y = index ~/ gameState.size;
+                            final cell = gameState.board[y][x];
+
+                            final isPossibleMove = gameState.possibleMoves.any(
+                              (p) => p.x == x && p.y == y,
+                            );
+
+                            return Material(
+                              color: cell == null
+                                  ? Colors.white
+                                  : getColorForCell(cell.color).withOpacity(
+                                      cell.type == CellType.path ? 0.6 : 1.0,
+                                    ),
+                              borderRadius: BorderRadius.circular(4),
+                              child: InkWell(
+                                onTap: () => handleCellClick(x, y),
+                                borderRadius: BorderRadius.circular(4),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: isPossibleMove
+                                        ? Border.all(
+                                            color: getColorForCell(
+                                              selectedColor!,
+                                            ),
+                                            width: 6,
+                                          )
+                                        : cell != null &&
+                                              (cell.type == CellType.start ||
+                                                  cell.type == CellType.end)
+                                        ? Border.all(
+                                            color: getColorForCell(cell.color),
+                                            width: 3,
+                                          )
+                                        : cell != null
+                                        ? Border.all(
+                                            color: getColorForCell(cell.color),
+                                            width: 2,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Center(
+                                    child:
+                                        cell != null &&
+                                            (cell.type == CellType.start ||
+                                                cell.type == CellType.end)
+                                        ? Text(
+                                            cell.color,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                            );
                           },
-                          icon: const Icon(Icons.auto_awesome, size: 20),
-                          label: const Text(
-                            'Solve with DFS',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Controls
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: handleUndo,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFBBF24),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Undo Last',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: selectedColor != null
+                                ? handleClearPath
+                                : null,
+                            icon: const Icon(Icons.close, size: 20),
+                            label: const Text(
+                              'Clear Path',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF4444),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: initializeGame,
+                            icon: const Icon(Icons.refresh, size: 20),
+                            label: const Text(
+                              'New Game',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3B82F6),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              log('start solving');
+                              await handleSolve();
+                            },
+                            icon: const Icon(Icons.auto_awesome, size: 20),
+                            label: const Text(
+                              'Solve with DFS',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: visualizeDFS,
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: const Text(
+                              'Visualize DFS',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF9333EA),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ),
