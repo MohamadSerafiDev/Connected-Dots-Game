@@ -239,7 +239,7 @@ class GameState {
 
     // The state in the stack is a tuple: (GameState, indexOfPairToSolve)
     final stack = <(GameState, int)>[(this, 0)];
-    visitedStates.add(getHashOfState() + '_0');
+    visitedStates.add('${getHashOfState()}_0');
 
     while (stack.isNotEmpty) {
       final (currentState, pairIndex) = stack.removeLast();
@@ -252,7 +252,7 @@ class GameState {
 
       if (pairIndex == randomPairs.length) {
         if (currentState.isFinalState()) {
-          yield currentState; // Final solution
+          yield currentState; // rinal solution
           return;
         }
         continue;
@@ -264,9 +264,9 @@ class GameState {
       final lastPos = path.last;
 
       if (lastPos.x == pair.end.x && lastPos.y == pair.end.y) {
-        // This color is already connected. Move to the next one.
+        // this color is already connected -> Move to the next one.
         final nextStateTuple = (currentState, pairIndex + 1);
-        final hash = currentState.getHashOfState() + '_${pairIndex + 1}';
+        final hash = '${currentState.getHashOfState()}_${pairIndex + 1}';
         if (!visitedStates.contains(hash)) {
           visitedStates.add(hash);
           stack.add(nextStateTuple);
@@ -274,7 +274,7 @@ class GameState {
         continue;
       }
 
-      // This color is not connected yet. Find possible moves.
+      // this color is not connected yet -> Find possible moves.
       final possibleMoves = currentState.getPossibleMoves(color);
 
       for (final move in possibleMoves) {
@@ -286,11 +286,11 @@ class GameState {
 
         int nextPairIndex = pairIndex;
         if (newLastPos.x == pair.end.x && newLastPos.y == pair.end.y) {
-          // Path for this color is complete, move to the next color.
+          // the path for this color is complete -> move to the next color.
           nextPairIndex = pairIndex + 1;
         }
 
-        final hash = newState.getHashOfState() + '_$nextPairIndex';
+        final hash = '${newState.getHashOfState()}_$nextPairIndex';
         if (!visitedStates.contains(hash)) {
           visitedStates.add(hash);
           stack.add((newState, nextPairIndex));

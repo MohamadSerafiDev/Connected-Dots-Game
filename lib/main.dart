@@ -219,7 +219,7 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
 
   Future<void> visualizeDFS() async {
     setState(() {
-      message = 'Visualizing DFS...';
+      message = 'visualizing DFS...';
     });
     await for (final state in gameState.solveWithDFS()) {
       setState(() {
@@ -228,7 +228,7 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
       await Future.delayed(const Duration(milliseconds: 100));
     }
     setState(() {
-      message = 'Visualization complete.';
+      message = 'Visualization complete';
     });
   }
 
@@ -548,10 +548,10 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
+                              backgroundColor: Colors.lightGreen,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                                horizontal: 12,
                                 vertical: 12,
                               ),
                               shape: RoundedRectangleBorder(
@@ -567,10 +567,10 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF9333EA),
+                              backgroundColor: Colors.indigoAccent,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                                horizontal: 12,
                                 vertical: 12,
                               ),
                               shape: RoundedRectangleBorder(
