@@ -234,10 +234,10 @@ class GameState {
   }
 
   Stream<GameState> solveWithDFS() async* {
-    final randomPairs = List<ColorPair>.from(colorPairs)..shuffle();
+    final colorSolvingPairs = List<ColorPair>.from(colorPairs);
     final visitedStates = <String>{};
 
-    // The state in the stack is a tuple: (GameState, indexOfPairToSolve)
+    // state in the stack is a tuple: (GameState, indexOfPairToSolve)
     final stack = <(GameState, int)>[(this, 0)];
     visitedStates.add('${getHashOfState()}_0');
 
@@ -250,21 +250,21 @@ class GameState {
       );
       yield currentState;
 
-      if (pairIndex == randomPairs.length) {
+      if (pairIndex == colorSolvingPairs.length) {
         if (currentState.isFinalState()) {
-          yield currentState; // rinal solution
+          yield currentState;
           return;
         }
         continue;
       }
 
-      final pair = randomPairs[pairIndex];
+      final pair = colorSolvingPairs[pairIndex];
       final color = pair.color;
       final path = currentState.paths[color]!;
       final lastPos = path.last;
 
       if (lastPos.x == pair.end.x && lastPos.y == pair.end.y) {
-        // this color is already connected -> Move to the next one.
+        // this color is already connected -> Move to the next one
         final nextStateTuple = (currentState, pairIndex + 1);
         final hash = '${currentState.getHashOfState()}_${pairIndex + 1}';
         if (!visitedStates.contains(hash)) {
@@ -274,7 +274,7 @@ class GameState {
         continue;
       }
 
-      // this color is not connected yet -> Find possible moves.
+      // this color is not connected yet -> Find possible moves
       final possibleMoves = currentState.getPossibleMoves(color);
 
       for (final move in possibleMoves) {
@@ -286,7 +286,7 @@ class GameState {
 
         int nextPairIndex = pairIndex;
         if (newLastPos.x == pair.end.x && newLastPos.y == pair.end.y) {
-          // the path for this color is complete -> move to the next color.
+          // the path for this color is complete -> move to the next color
           nextPairIndex = pairIndex + 1;
         }
 

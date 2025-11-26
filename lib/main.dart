@@ -221,14 +221,16 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     setState(() {
       message = 'visualizing DFS...';
     });
+    var numSearches = 0;
     await for (final state in gameState.solveWithDFS()) {
       setState(() {
         gameState = state;
       });
-      await Future.delayed(const Duration(milliseconds: 100));
+      numSearches++;
+      await Future.delayed(const Duration(milliseconds: 10));
     }
     setState(() {
-      message = 'Visualization complete';
+      message = 'Visualization complete, searches: ${numSearches.toString()}';
     });
   }
 
