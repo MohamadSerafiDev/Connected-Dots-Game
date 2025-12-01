@@ -1,8 +1,10 @@
-import 'dart:developer';
+import 'dart:developer' as dev;
+import 'dart:math';
 
 import 'package:dot_connec_project/cell.dart';
 import 'package:dot_connec_project/color_pair.dart';
 import 'package:dot_connec_project/game_state.dart';
+import 'package:dot_connec_project/levels_page.dart';
 import 'package:dot_connec_project/position.dart';
 import 'package:dot_connec_project/winning_states_screen.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +28,8 @@ class NumberLinkApp extends StatelessWidget {
 }
 
 class NumberLinkGame extends StatefulWidget {
-  const NumberLinkGame({super.key});
+  final GameState? initialGameState;
+  const NumberLinkGame({super.key, this.initialGameState});
 
   @override
   State<NumberLinkGame> createState() => _NumberLinkGameState();
@@ -46,22 +49,32 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     const Color(0xFF4ECDC4),
     const Color(0xFF45B7D1),
     const Color(0xFFFFA07A),
-    const Color(0xFF98D8C8),
+    const Color.fromARGB(255, 170, 124, 235),
     const Color(0xFFF7DC6F),
   ];
   @override
   void initState() {
     super.initState();
-    initializeGame();
+    if (widget.initialGameState != null) {
+      gameState = widget.initialGameState!;
+      statesHistory.add(gameState.copyState());
+      visitedStates.add(gameState.getHashOfState());
+      selectedColor = null;
+      isComplete = false;
+      message = 'Select a color to start connecting!';
+    } else {
+      initializeGame();
+    }
   }
 
   void initializeGame() {
-    const size = 5;
+    const size = 6;
     final colorPairs = [
-      ColorPair(color: 'A', start: Position(0, 0), end: Position(0, 4)),
-      ColorPair(color: 'B', start: Position(2, 2), end: Position(4, 4)),
-      ColorPair(color: 'C', start: Position(2, 1), end: Position(2, 4)),
-      ColorPair(color: 'D', start: Position(2, 0), end: Position(4, 2)),
+      ColorPair(color: 'A', start: Position(1, 1), end: Position(5, 1)),
+      ColorPair(color: 'B', start: Position(1, 3), end: Position(4, 4)),
+      ColorPair(color: 'C', start: Position(2, 1), end: Position(0, 5)),
+      // ColorPair(color: 'D', start: Position(2, 0), end: Position(4, 2)),
+      // ColorPair(color: 'E', start: Position(2, 5), end: Position(6, 1)),
     ];
 
     setState(() {
@@ -77,6 +90,66 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     });
 
     gameState.printBoard();
+  }
+
+  Future<void> generateLevels() async {
+    setState(() {
+      message = 'Generating levels...';
+    });
+
+    final List<GameState> levels = [];
+    const int gridSize = 5;
+    final random = Random();
+
+    for (int i = 0; i < 5; i++) {
+      late GameState newGameState;
+      bool isSolvable = false;
+
+      while (!isSolvable) {
+        final List<Position> usedPositions = [];
+        final List<ColorPair> colorPairs = [];
+
+        for (int j = 0; j < 3; j++) {
+          late Position start, end;
+          do {
+            start = Position(
+              random.nextInt(gridSize),
+              random.nextInt(gridSize),
+            );
+          } while (usedPositions.any((p) => p.x == start.x && p.y == start.y));
+          usedPositions.add(start);
+
+          do {
+            end = Position(random.nextInt(gridSize), random.nextInt(gridSize));
+          } while (usedPositions.any((p) => p.x == end.x && p.y == end.y) ||
+              (start.x - end.x).abs() + (start.y - end.y).abs() <= 2);
+          usedPositions.add(end);
+
+          colorPairs.add(
+            ColorPair(
+              color: String.fromCharCode(65 + j),
+              start: start,
+              end: end,
+            ),
+          );
+        }
+
+        newGameState = GameState(size: gridSize, colorPairs: colorPairs);
+        final solution = await newGameState.solveWithDFS().last;
+        if (solution.isFinalState()) {
+          isSolvable = true;
+        }
+      }
+      levels.add(newGameState);
+    }
+
+    setState(() {
+      message = 'Levels generated!';
+    });
+
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => LevelsPage(levels: levels)));
   }
 
   void handleCellClick(int x, int y) {
@@ -110,10 +183,10 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
       final stateHash = newState.getHashOfState();
       if (visitedStates.contains(stateHash)) {
         duplicateStates.add(stateHash);
-        log(stateHash);
+        dev.log(stateHash);
         message = 'State already visited';
       } else {
-        log(stateHash);
+        dev.log(stateHash);
         visitedStates.add(stateHash);
         message = 'New state';
       }
@@ -205,7 +278,7 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     final solution = await gameState.solveWithDFS().last;
     if (solution.isFinalState()) {
       setState(() {
-        log('solved!!');
+        dev.log('solved!!');
         gameState = solution;
         isComplete = true;
         message = 'Solved!';
@@ -227,7 +300,24 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
         gameState = state;
       });
       numSearches++;
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    setState(() {
+      message = 'Visualization complete, searches: ${numSearches.toString()}';
+    });
+  }
+
+  Future<void> visualizeBFS() async {
+    setState(() {
+      message = 'visualizing BFS...';
+    });
+    var numSearches = 0;
+    await for (final state in gameState.solveWithBFS()) {
+      setState(() {
+        gameState = state;
+      });
+      numSearches++;
+      await Future.delayed(const Duration(milliseconds: 20));
     }
     setState(() {
       message = 'Visualization complete, searches: ${numSearches.toString()}';
@@ -242,6 +332,10 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 202, 162, 255),
+        toolbarHeight: 24,
+      ),
       body: SingleChildScrollView(
         child: Container(
           decoration: const BoxDecoration(
@@ -540,8 +634,27 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                             ),
                           ),
                           ElevatedButton.icon(
+                            onPressed: generateLevels,
+                            icon: const Icon(Icons.auto_awesome, size: 20),
+                            label: const Text(
+                              'Generate Levels',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
                             onPressed: () async {
-                              log('start solving');
+                              dev.log('start solving');
                               await handleSolve();
                             },
                             icon: const Icon(Icons.auto_awesome, size: 20),
@@ -570,6 +683,25 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.indigoAccent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: visualizeBFS,
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: const Text(
+                              'Visualize BFS',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orangeAccent,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
