@@ -5,4 +5,6 @@ class Position {
   Position(this.x, this.y);
 
   Position copy() => Position(x, y);
+  @override
+  String toString() => '($x, $y)';
 }

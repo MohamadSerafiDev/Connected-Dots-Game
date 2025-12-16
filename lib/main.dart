@@ -29,7 +29,8 @@ class NumberLinkApp extends StatelessWidget {
 
 class NumberLinkGame extends StatefulWidget {
   final GameState? initialGameState;
-  const NumberLinkGame({super.key, this.initialGameState});
+  final bool? isGeneratePage;
+  const NumberLinkGame({super.key, this.initialGameState, this.isGeneratePage});
 
   @override
   State<NumberLinkGame> createState() => _NumberLinkGameState();
@@ -52,6 +53,19 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     const Color.fromARGB(255, 170, 124, 235),
     const Color(0xFFF7DC6F),
   ];
+  // A simple static weights grid (6x6) used for UCS runs.
+  // Lower numbers are cheaper; this is intentionally uniform.
+  final List<List<int>> simpleWeights = const [
+    [1, 2, 1, 1, 10],
+    // [1, 1, 1, 1, 10],
+    // [1, 1, 1, 1, 10],
+    // [1, 1, 1, 1, 10],
+    // [1, 1, 1, 1, 10],
+    [2, 1, 1, 1, 10],
+    [0, 1, 1, 1, 10],
+    [1, 2, 2, 1, 10],
+    [1, 1, 1, 1, 10],
+  ];
   @override
   void initState() {
     super.initState();
@@ -68,11 +82,18 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
   }
 
   void initializeGame() {
-    const size = 6;
+    //solvable with HC
+    // int size = 4;
+    // List<ColorPair> colorPairs = [
+    //   ColorPair(color: 'A', start: Position(0, 0), end: Position(2, 3)),
+
+    //   ColorPair(color: 'B', start: Position(3, 2), end: Position(3, 3)),
+    // ];
+    const size = 5;
     final colorPairs = [
-      ColorPair(color: 'A', start: Position(1, 1), end: Position(5, 1)),
-      ColorPair(color: 'B', start: Position(1, 3), end: Position(4, 4)),
-      ColorPair(color: 'C', start: Position(2, 1), end: Position(0, 5)),
+      ColorPair(color: 'A', start: Position(1, 0), end: Position(1, 2)),
+      ColorPair(color: 'B', start: Position(2, 0), end: Position(0, 3)),
+      ColorPair(color: 'C', start: Position(1, 1), end: Position(2, 2)),
       // ColorPair(color: 'D', start: Position(2, 0), end: Position(4, 2)),
       // ColorPair(color: 'E', start: Position(2, 5), end: Position(6, 1)),
     ];
@@ -116,7 +137,9 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
               random.nextInt(gridSize),
               random.nextInt(gridSize),
             );
+            dev.log(start.toString(), name: 'start');
           } while (usedPositions.any((p) => p.x == start.x && p.y == start.y));
+          dev.log(usedPositions.toString(), name: 'used positions');
           usedPositions.add(start);
 
           do {
@@ -271,7 +294,7 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     gameState.printBoard();
   }
 
-  Future<void> handleSolve() async {
+  Future<void> handleDfsSolve() async {
     setState(() {
       message = 'Solving...';
     });
@@ -322,6 +345,132 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
     setState(() {
       message = 'Visualization complete, searches: ${numSearches.toString()}';
     });
+  }
+
+  Future<void> visualizeUCS([List<List<int>>? weights]) async {
+    setState(() {
+      message = 'visualizing UCS...';
+    });
+
+    final w =
+        weights ??
+        List.generate(gameState.size, (_) => List.filled(gameState.size, 1));
+
+    var numSearches = 0;
+    await for (final state in gameState.solveWithUCS(w)) {
+      setState(() {
+        gameState = state;
+      });
+      numSearches++;
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    setState(() {
+      message = 'Visualization complete, searches: ${numSearches.toString()}';
+    });
+  }
+
+  Future<void> handleSolveWithUCS([List<List<int>>? weights]) async {
+    setState(() {
+      message = 'Solving with UCS...';
+    });
+
+    final w =
+        weights ??
+        List.generate(gameState.size, (_) => List.filled(gameState.size, 1));
+
+    final solution = await gameState.solveWithUCS(w).last;
+    if (solution.isFinalState()) {
+      setState(() {
+        dev.log('solved with UCS!!');
+        gameState = solution;
+        isComplete = true;
+        message = 'Solved with UCS!';
+      });
+    } else {
+      setState(() {
+        message = 'No solution found with UCS.';
+      });
+    }
+  }
+
+  Future<void> handleSolveWithHillClimbing() async {
+    setState(() => message = 'Solving with Hill Climbing...');
+
+    // Attempt to get the last state yielded by the stream
+    final solution = await gameState.solveWithHillClimbing().last;
+
+    // --- CODE TO ANSWER YOUR QUESTION ---
+    // 1. Get a unique representation (hash) of the last state.
+    String lastStateHash = solution.getHashOfState();
+    // 2. Check if this last state is the final/solved state.
+    bool isFinal = solution.isFinalState();
+
+    // Print the results to the debug console
+    dev.log(
+      'Last State Hash Reached by Hill Climbing: $lastStateHash',
+      name: 'HillClimbingResult',
+    );
+    dev.log(
+      'Is the Last State the Final State (Solved)? $isFinal',
+      name: 'HillClimbingResult',
+    );
+    // ------------------------------------
+
+    if (solution.isFinalState()) {
+      setState(() {
+        gameState = solution;
+        isComplete = true;
+        message = 'Solved with Hill Climbing!';
+      });
+    } else {
+      setState(() {
+        gameState = solution; // Show where it got stuck
+        message = 'Hill Climbing Stuck (Local Max)!';
+      });
+    }
+  }
+
+  Future<void> visualizeHillClimbing() async {
+    setState(() => message = 'Visualizing Hill Climbing...');
+    var steps = 0;
+    await for (final state in gameState.solveWithHillClimbing()) {
+      setState(() => gameState = state);
+      steps++;
+      await Future.delayed(
+        const Duration(milliseconds: 100),
+      ); // Slower delay to see decisions
+    }
+    setState(() => message = 'Hill Climbing ended. Steps: $steps');
+  }
+
+  Future<void> handleSolveWithAStar() async {
+    setState(() => message = 'Solving with A*...');
+    // Uses simpleWeights (UCS weights) for G cost
+    final solution = await gameState.solveWithAStar(simpleWeights).last;
+
+    if (solution.isFinalState()) {
+      setState(() {
+        gameState = solution;
+        isComplete = true;
+        message = 'Solved with A*!';
+      });
+    } else {
+      setState(() => message = 'No solution found with A*.');
+    }
+  }
+
+  Future<void> visualizeAStar() async {
+    setState(() => message = 'Visualizing A*...');
+    var searches = 0;
+    await for (final state in gameState.solveWithAStar(simpleWeights)) {
+      setState(() => gameState = state);
+      searches++;
+      await Future.delayed(
+        const Duration(milliseconds: 20),
+      ); // Fast to show search spread
+    }
+    setState(() => message = 'A* Complete. Searches: $searches');
   }
 
   Color getColorForCell(String color) {
@@ -633,29 +782,36 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                               ),
                             ),
                           ),
-                          ElevatedButton.icon(
-                            onPressed: generateLevels,
-                            icon: const Icon(Icons.auto_awesome, size: 20),
-                            label: const Text(
-                              'Generate Levels',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
+                          widget.isGeneratePage == null
+                              ? ElevatedButton.icon(
+                                  onPressed: generateLevels,
+                                  icon: const Icon(
+                                    Icons.auto_awesome,
+                                    size: 20,
+                                  ),
+                                  label: const Text(
+                                    'Generate Levels',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                )
+                              : SizedBox(),
                           ElevatedButton.icon(
                             onPressed: () async {
                               dev.log('start solving');
-                              await handleSolve();
+                              await handleDfsSolve();
                             },
                             icon: const Icon(Icons.auto_awesome, size: 20),
                             label: const Text(
@@ -702,6 +858,128 @@ class _NumberLinkGameState extends State<NumberLinkGame> {
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.orangeAccent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              await handleSolveWithUCS(simpleWeights);
+                            },
+                            icon: const Icon(Icons.auto_awesome, size: 20),
+                            label: const Text(
+                              'Solve with UCS',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => visualizeUCS(simpleWeights),
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: const Text(
+                              'Visualize UCS',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.pinkAccent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+
+                          // ... existing UCS buttons ...
+
+                          // --- HILL CLIMBING BUTTONS ---
+                          ElevatedButton.icon(
+                            onPressed: handleSolveWithHillClimbing,
+                            icon: const Icon(Icons.terrain, size: 20),
+                            label: const Text(
+                              'Solve Hill Climb',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.brown,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: visualizeHillClimbing,
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: const Text(
+                              'Visualize HC',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.brown[300],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+
+                          // --- A* BUTTONS ---
+                          ElevatedButton.icon(
+                            onPressed: handleSolveWithAStar,
+                            icon: const Icon(Icons.star, size: 20),
+                            label: const Text(
+                              'Solve A*',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: visualizeAStar,
+                            icon: const Icon(Icons.play_arrow, size: 20),
+                            label: const Text(
+                              'Visualize A*',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purpleAccent,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,

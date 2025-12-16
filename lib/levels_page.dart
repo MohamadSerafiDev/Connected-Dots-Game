@@ -10,9 +10,7 @@ class LevelsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Generated Levels'),
-      ),
+      appBar: AppBar(title: const Text('Generated Levels')),
       body: ListView.builder(
         itemCount: levels.length,
         itemBuilder: (context, index) {
@@ -23,6 +21,7 @@ class LevelsPage extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => NumberLinkGame(
                     initialGameState: levels[index],
+                    isGeneratePage: true,
                   ),
                 ),
               );

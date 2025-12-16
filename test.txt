@@ -1,0 +1,67 @@
+Stream<GameState> solveWithUCS(List<List<int>> weights) async* {
+    if (weights.length != size || weights.any((row) => row.length != size)) {
+      throw ArgumentError('weights grid must match board size');
+    }
+
+    final colorSolvingPairs = List<ColorPair>.from(colorPairs);
+
+    var currentState = this;
+
+    for (int pairIndex = 0; pairIndex < colorSolvingPairs.length; pairIndex++) {
+      final pair = colorSolvingPairs[pairIndex];
+      final color = pair.color;
+
+      final queue = <(GameState, int)>[(currentState, 0)];
+      final visitedCostsPerColor = <String, int>{};
+      visitedCostsPerColor[currentState.getHashOfState()] = 0;
+
+      var found = false;
+
+      while (queue.isNotEmpty) {
+        // sort by accumulated cost (lowest first)
+        queue.sort((a, b) {
+          final (_, ca) = a;
+          final (_, cb) = b;
+          return ca.compareTo(cb);
+        });
+
+        final (state, cost) = queue.removeAt(0);
+        yield state;
+
+        final path = state.paths[color]!;
+        final lastPos = path.last;
+
+        if (lastPos.x == pair.end.x && lastPos.y == pair.end.y) {
+          //  least-cost connection for this color
+          currentState = state;
+          found = true;
+          break;
+        }
+
+        final possibleMoves = state.getPossibleMoves(color);
+        for (final move in possibleMoves) {
+          final newState = state.copyState();
+          newState.makePossibleMoves(move.x, move.y, color);
+
+          final moveCost = weights[move.y][move.x];
+          final newCost = cost + moveCost;
+
+          final hash = newState.getHashOfState();
+          final prev = visitedCostsPerColor[hash];
+          if (prev == null || newCost < prev) {
+            visitedCostsPerColor[hash] = newCost;
+            queue.add((newState, newCost));
+          }
+        }
+      }
+
+      if (!found) {
+        // unable to connect this color from currentState
+        return;
+      }
+    }
+
+    if (currentState.isFinalState()) {
+      yield currentState;
+    }
+  }
